@@ -9,10 +9,10 @@ dotenv.config();
 
 const app = express();
 
-// CORS Configuration
 const allowedOrigins = [
   'http://localhost:5173', // Default Vite port
   'http://localhost:5174', // Secondary Vite port
+  'https://loginpage-xtsc.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
