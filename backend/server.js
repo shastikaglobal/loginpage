@@ -53,16 +53,32 @@ app.use((err, req, res, next) => {
 // MongoDB Connection
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
+let startupError = null;
 
-if (!MONGODB_URI) {
-  console.error('CRITICAL: MONGODB_URI is not defined in the environment variables.');
-  process.exit(1);
+try {
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is missing');
+  }
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is missing');
+  }
+} catch (err) {
+  console.error('Startup Error:', err.message);
+  startupError = {
+    message: err.message,
+    stack: err.stack,
+    envKeys: Object.keys(process.env).filter(k => !k.includes('SECRET') && !k.includes('PASSWORD') && !k.includes('URI'))
+  };
 }
 
-if (!process.env.JWT_SECRET) {
-    console.error('JWT_SECRET is missing');
-    process.exit(1);
-}
+app.get('/api/auth/debug', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Debug endpoint reached',
+    startupError,
+    nodeEnv: process.env.NODE_ENV
+  });
+});
 
 // Connect to MongoDB using Mongoose
 mongoose
