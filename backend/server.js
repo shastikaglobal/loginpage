@@ -71,27 +71,60 @@ try {
   };
 }
 
+// Disable Mongoose command buffering so that queries fail fast if DB connection fails
+mongoose.set('bufferCommands', false);
+
+let cachedConnection = null;
+
+const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return mongoose.connection;
+  }
+  if (!cachedConnection) {
+    cachedConnection = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Fail fast after 5s
+    }).then((conn) => {
+      console.log('Successfully connected to MongoDB.');
+      return conn;
+    }).catch((err) => {
+      console.error('MongoDB connection failure:', err.message);
+      cachedConnection = null;
+      throw err;
+    });
+  }
+  return cachedConnection;
+};
+
+// Database connection check middleware
+app.use(async (req, res, next) => {
+  if (req.path === '/health' || req.path === '/api/auth/debug') {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Database connection failed: ' + err.message
+    });
+  }
+});
+
 app.get('/api/auth/debug', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Debug endpoint reached',
     startupError,
+    dbState: mongoose.connection.readyState,
     nodeEnv: process.env.NODE_ENV
   });
 });
 
-// Connect to MongoDB using Mongoose
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log('Successfully connected to MongoDB.');
-  })
-  .catch((err) => {
-    console.error('MongoDB connection failure:', err.message);
-    if (require.main === module) {
-      process.exit(1);
-    }
-  });
+// Auto-connect on startup
+if (MONGODB_URI) {
+  connectDB().catch(() => {});
+}
 
 if (require.main === module) {
   app.listen(PORT, () => {
