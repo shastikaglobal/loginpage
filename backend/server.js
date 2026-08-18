@@ -52,12 +52,12 @@ app.use((err, req, res, next) => {
 
 // MongoDB Connection
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || process.env.mongodb;
 let startupError = null;
 
 try {
   if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI environment variable is missing');
+    throw new Error('MONGODB_URI or mongodb environment variable is missing');
   }
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is missing');
